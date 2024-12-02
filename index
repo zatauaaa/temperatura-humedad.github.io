@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temperatura y Humedad de Gasapos</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    h1 {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>Temperatura y Humedad de Gasapos</h1>
+  <div>
+    <canvas id="mainChart" width="400" height="200"></canvas>
+  </div>
+  <br>
+  <h3>Selecciona el día</h3>
+  <input type="date" id="datePicker">
+  <button onclick="filterData()">Mostrar Datos del Día</button>
+  <p id="averageTemperature"></p>
+  <p id="averageHumidity"></p>
+  <div>
+    <canvas id="dailyChart" width="400" height="200"></canvas>
+  </div>
+
+  <script>
+    let dataEntries = [];
+    const mainCtx = document.getElementById('mainChart').getContext('2d');
+    const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+    let mainChart;
+    let dailyChart;
+
+    const apiUrl = "https://script.google.com/macros/s/AKfycbxxZhvNEziuSdlFehugSzbOcmEvjFnFN7qoVjrxtlj3Ah4CkSJr_cy4ufak51bmNKS8ew/exec";
+
+    async function fetchData() {
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+
+      dataEntries = data.map(entry => {
+        return {
+          fecha: new Date(entry.fecha).toISOString().split('T')[0],
+          temperatura: entry.temperatura,
+          humedad: entry.humedad
+        };
+      });
+
+      createMainChart();
+    }
+
+    function createMainChart() {
+      const labels = dataEntries.map(entry => entry.fecha);
+      const temperatures = dataEntries.map(entry => entry.temperatura);
+      const humidity = dataEntries.map(entry => entry.humedad);
+
+      if (mainChart) {
+        mainChart.destroy();
+      }
+
+      mainChart = new Chart(mainCtx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Temperatura Promedio (°C)',
+              data: temperatures,
+              borderColor: 'rgba(75, 192, 192, 1)',
+              fill: false
+            },
+            {
+              label: 'Humedad (%)',
+              data: humidity,
+              borderColor: 'rgba(255, 99, 132, 1)',
+              fill: false
+            }
+          ]
+        },
+        options: {
+          scales: {
+            x: { title: { display: true, text: 'Fecha' } },
+            y: { title: { display: true, text: 'Valor' } }
+          }
+        }
+      });
+    }
+
+    function filterData() {
+      const selectedDate = document.getElementById('datePicker').value;
+      const filteredData = dataEntries.filter(entry => entry.fecha === selectedDate);
+
+      if (filteredData.length > 0) {
+        const avgTemp = (filteredData.reduce((sum, entry) => sum + entry.temperatura, 0) / filteredData.length).toFixed(2);
+        const avgHum = (filteredData.reduce((sum, entry) => sum + entry.humedad, 0) / filteredData.length).toFixed(2);
+
+        document.getElementById('averageTemperature').innerText = `Promedio de Temperatura: ${avgTemp} °C`;
+        document.getElementById('averageHumidity').innerText = `Promedio de Humedad: ${avgHum} %`;
+
+        const times = filteredData.map(entry => entry.fecha);
+        const temps = filteredData.map(entry => entry.temperatura);
+        const hums = filteredData.map(entry => entry.humedad);
+
+        if (dailyChart) {
+          dailyChart.destroy();
+        }
+
+        dailyChart = new Chart(dailyCtx, {
+          type: 'line',
+          data: {
+            labels: times,
+            datasets: [
+              {
+                label: 'Temperatura (°C)',
+                data: temps,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                fill: false
+              },
+              {
+                label: 'Humedad (%)',
+                data: hums,
+                borderColor: 'rgba(255, 99, 132, 1)',
+                fill: false
+              }
+            ]
+          },
+          options: {
+            scales: {
+              x: { title: { display: true, text: 'Hora' } },
+              y: { title: { display: true, text: 'Valor' } }
+            }
+          }
+        });
+      } else {
+        document.getElementById('averageTemperature').innerText = "No hay datos para esta fecha.";
+        document.getElementById('averageHumidity').innerText = "";
+      }
+    }
+
+    fetchData();
+  </script>
+</body>
+</html>
